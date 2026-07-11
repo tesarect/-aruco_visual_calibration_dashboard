@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview",
+    "preview": "bash scripts/print_webpage_address.sh vite preview",
     "extract-urdf": "python3 ../scripts/extract_urdf.py"
   },
   "dependencies": {
