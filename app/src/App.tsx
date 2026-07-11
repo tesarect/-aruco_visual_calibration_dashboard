@@ -1,13 +1,38 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useRosbridge } from "./useRosbridge";
 
 const STORAGE_KEY = "rosbridge-url";
+
+interface RosjectConfig {
+  rosbridgeAddress: string;
+}
 
 export default function App() {
   const [url, setUrl] = useState(
     () => localStorage.getItem(STORAGE_KEY) ?? "ws://localhost:9090"
   );
   const { status, errorMessage, connect, disconnect } = useRosbridge();
+
+  useEffect(() => {
+    // Relative, not root-absolute — the page is served under the
+    // rosject's /<SLOT_PREFIX>/webpage/ proxy prefix, and a root-absolute
+    // fetch resolves against the domain root instead, 404ing (same class
+    // of bug as vite.config.ts's base:"./" fix — see README.md).
+    fetch("./rosject-config.json")
+      .then((res) => (res.ok ? (res.json() as Promise<RosjectConfig>) : null))
+      .then((config) => {
+        // The rosject's instance/SLOT_PREFIX changes every session, so a
+        // freshly-fetched rosbridge_address is more trustworthy than
+        // whatever URL was saved to localStorage last session.
+        if (config?.rosbridgeAddress) {
+          setUrl(config.rosbridgeAddress);
+        }
+      })
+      .catch(() => {
+        // rosject-config.json is optional (e.g. running outside a
+        // rosject) — fall back silently to the existing default.
+      });
+  }, []);
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();

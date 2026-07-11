@@ -1,5 +1,7 @@
+import path from "path";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
 
 // The Construct's rosject exposes this app through its own nginx proxy, on
 // a port confirmed by the course instructor to be 7000 (see webpage_ws
@@ -32,7 +34,14 @@ const PORT = Number(process.env.PORT) || 5173;
 
 export default defineConfig({
   base: "./",
-  plugins: [react()],
+  plugins: [react(), tailwindcss()],
+  resolve: {
+    // Matches tsconfig.json's paths — required by shadcn/ui's generated
+    // components (they import via "@/lib/utils" etc.).
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
+    },
+  },
   server: {
     host: true,
     port: PORT,
