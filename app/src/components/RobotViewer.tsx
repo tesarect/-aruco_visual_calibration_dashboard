@@ -1,10 +1,15 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Canvas } from "@react-three/fiber";
+import { OrbitControls } from "@react-three/drei";
 import URDFLoader, { type URDFRobot } from "urdf-loader";
 import ROSLIB from "roslib";
+import { FrameAxes } from "@/components/FrameAxes";
+import { MARKER_FRAMES } from "@/markerFrames";
+import type { MarkerVisibilityState } from "@/components/MarkersPanel";
 
 interface RobotViewerProps {
   ros: ROSLIB.Ros | null;
+  markerVisibility: MarkerVisibilityState;
 }
 
 interface JointStateMessage {
@@ -58,7 +63,7 @@ function useJointStates(ros: ROSLIB.Ros | null, robot: URDFRobot | null) {
   }, [ros, robot]);
 }
 
-export function RobotViewer({ ros }: RobotViewerProps) {
+export function RobotViewer({ ros, markerVisibility }: RobotViewerProps) {
   const { robot, error } = useUrdfRobot();
   useJointStates(ros, robot);
 
@@ -80,7 +85,21 @@ export function RobotViewer({ ros }: RobotViewerProps) {
       <Canvas frameloop="always" camera={{ position: [1.5, 1.5, 1.5], fov: 50 }}>
         <ambientLight intensity={0.6} />
         <directionalLight position={[2, 4, 2]} intensity={1} />
-        {robot && <primitive object={robot} rotation={[-Math.PI / 2, 0, 0]} />}
+        {/* Click-drag to orbit, scroll to zoom, right-click-drag to pan —
+            the standard @react-three/fiber camera control component. */}
+        <OrbitControls makeDefault />
+        {robot && (
+          <primitive object={robot} rotation={[-Math.PI / 2, 0, 0]}>
+            {MARKER_FRAMES.map((frame) => (
+              <FrameAxes
+                key={frame.id}
+                robot={robot}
+                linkName={frame.linkName}
+                visible={markerVisibility[frame.id] ?? { x: false, y: false, z: false }}
+              />
+            ))}
+          </primitive>
+        )}
       </Canvas>
     </div>
   );
