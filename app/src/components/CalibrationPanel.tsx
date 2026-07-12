@@ -44,7 +44,7 @@ export function CalibrationPanel({ ros }: CalibrationPanelProps) {
         </Button>
       </div>
 
-      <fieldset className="flex flex-col gap-2">
+      <fieldset className="mt-3 flex flex-col gap-2">
         <legend className="text-sm font-medium">Path planning selection</legend>
         <RadioGroup
           value={planningMode}

@@ -5,7 +5,10 @@ import { RobotViewer } from "@/components/RobotViewer";
 import { MarkersPanel, useMarkerVisibility } from "@/components/MarkersPanel";
 import { CalibrationPanel } from "@/components/CalibrationPanel";
 import { PresetPositionsPanel } from "@/components/PresetPositionsPanel";
+import { LogsPanel, LOG_NODES } from "@/components/LogsPanel";
+import { LogsFeed } from "@/components/LogsFeed";
 import { CameraFeed } from "@/components/CameraFeed";
+import { useRosout } from "@/useRosout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
@@ -114,21 +117,36 @@ function LeftPanel({
   ros,
   markerVisibility,
   setMarkerVisibility,
+  enabledLogNodes,
+  setEnabledLogNodes,
 }: {
   ros: ReturnType<typeof useRosbridge>["ros"];
   markerVisibility: ReturnType<typeof useMarkerVisibility>[0];
   setMarkerVisibility: ReturnType<typeof useMarkerVisibility>[1];
+  enabledLogNodes: Set<string>;
+  setEnabledLogNodes: (nodes: Set<string>) => void;
 }) {
   return (
-    <aside className="flex w-72 shrink-0 flex-col gap-4 overflow-y-auto border-r p-4">
-      <SectionLabel>Calibration</SectionLabel>
-      <CalibrationPanel ros={ros} />
+    <aside className="flex w-96 shrink-0 flex-col gap-6 overflow-y-auto border-r p-6">
+      <div className="flex flex-col gap-3">
+        <SectionLabel>Calibration</SectionLabel>
+        <CalibrationPanel ros={ros} />
+      </div>
 
-      <SectionLabel>Prefixed Positions</SectionLabel>
-      <PresetPositionsPanel />
+      <div className="flex flex-col gap-3">
+        <SectionLabel>Prefixed Positions</SectionLabel>
+        <PresetPositionsPanel />
+      </div>
 
-      <SectionLabel>Visual Markers</SectionLabel>
-      <MarkersPanel value={markerVisibility} onChange={setMarkerVisibility} />
+      <div className="flex flex-col gap-3">
+        <SectionLabel>Visual Markers</SectionLabel>
+        <MarkersPanel value={markerVisibility} onChange={setMarkerVisibility} />
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <SectionLabel>Logs</SectionLabel>
+        <LogsPanel enabledNodes={enabledLogNodes} onChange={setEnabledLogNodes} />
+      </div>
     </aside>
   );
 }
@@ -139,6 +157,10 @@ export default function App() {
   );
   const { status, errorMessage, connect, disconnect, ros } = useRosbridge();
   const [markerVisibility, setMarkerVisibility] = useMarkerVisibility();
+  const [enabledLogNodes, setEnabledLogNodes] = useState<Set<string>>(
+    () => new Set(LOG_NODES.map((node) => node.id))
+  );
+  const logLines = useRosout(ros, enabledLogNodes);
 
   useRosjectRosbridgeAddress(setUrl);
 
@@ -168,6 +190,8 @@ export default function App() {
           ros={ros}
           markerVisibility={markerVisibility}
           setMarkerVisibility={setMarkerVisibility}
+          enabledLogNodes={enabledLogNodes}
+          setEnabledLogNodes={setEnabledLogNodes}
         />
         <div className="relative flex-1 overflow-hidden">
           <main className="absolute inset-0">
@@ -178,6 +202,10 @@ export default function App() {
             <div className="pointer-events-auto shadow-xl">
               <CameraFeed ros={ros} />
             </div>
+          </div>
+
+          <div className="pointer-events-none absolute bottom-4 right-4 z-10">
+            <LogsFeed lines={logLines} />
           </div>
         </div>
       </div>
