@@ -4,9 +4,11 @@ import { RosbridgeStatusLed } from "@/components/RosbridgeStatusLed";
 import { RobotViewer } from "@/components/RobotViewer";
 import { MarkersPanel, useMarkerVisibility } from "@/components/MarkersPanel";
 import { CalibrationPanel } from "@/components/CalibrationPanel";
+import { PresetPositionsPanel } from "@/components/PresetPositionsPanel";
 import { CameraFeed } from "@/components/CameraFeed";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
 
 const STORAGE_KEY = "rosbridge-url";
 
@@ -79,39 +81,13 @@ function LandingPage({
 function DashboardHeader({
   status,
   onDisconnect,
-  markersOpen,
-  onToggleMarkers,
-  calibrationOpen,
-  onToggleCalibration,
 }: {
   status: ReturnType<typeof useRosbridge>["status"];
   onDisconnect: () => void;
-  markersOpen: boolean;
-  onToggleMarkers: () => void;
-  calibrationOpen: boolean;
-  onToggleCalibration: () => void;
 }) {
   return (
     <header className="flex shrink-0 items-center justify-between border-b px-6 py-3">
-      <div className="flex items-center gap-4">
-        <span className="font-semibold">Visual Calibration Dashboard</span>
-        <nav className="flex items-center gap-1">
-          <Button
-            variant={markersOpen ? "secondary" : "ghost"}
-            size="sm"
-            onClick={onToggleMarkers}
-          >
-            Markers
-          </Button>
-          <Button
-            variant={calibrationOpen ? "secondary" : "ghost"}
-            size="sm"
-            onClick={onToggleCalibration}
-          >
-            Calibration
-          </Button>
-        </nav>
-      </div>
+      <span className="font-semibold">Visual Calibration Dashboard</span>
       <div className="flex items-center gap-4">
         <RosbridgeStatusLed status={status} />
         <Button variant="outline" size="sm" onClick={onDisconnect}>
@@ -122,14 +98,47 @@ function DashboardHeader({
   );
 }
 
+function SectionLabel({ children }: { children: string }) {
+  return (
+    <div className="flex items-center gap-2">
+      <Separator className="shrink" />
+      <span className="shrink-0 text-xs font-medium uppercase text-muted-foreground">
+        {children}
+      </span>
+      <Separator className="shrink" />
+    </div>
+  );
+}
+
+function LeftPanel({
+  ros,
+  markerVisibility,
+  setMarkerVisibility,
+}: {
+  ros: ReturnType<typeof useRosbridge>["ros"];
+  markerVisibility: ReturnType<typeof useMarkerVisibility>[0];
+  setMarkerVisibility: ReturnType<typeof useMarkerVisibility>[1];
+}) {
+  return (
+    <aside className="flex w-72 shrink-0 flex-col gap-4 overflow-y-auto border-r p-4">
+      <SectionLabel>Calibration</SectionLabel>
+      <CalibrationPanel ros={ros} />
+
+      <SectionLabel>Prefixed Positions</SectionLabel>
+      <PresetPositionsPanel />
+
+      <SectionLabel>Visual Markers</SectionLabel>
+      <MarkersPanel value={markerVisibility} onChange={setMarkerVisibility} />
+    </aside>
+  );
+}
+
 export default function App() {
   const [url, setUrl] = useState(
     () => localStorage.getItem(STORAGE_KEY) ?? "ws://localhost:9090"
   );
   const { status, errorMessage, connect, disconnect, ros } = useRosbridge();
   const [markerVisibility, setMarkerVisibility] = useMarkerVisibility();
-  const [markersOpen, setMarkersOpen] = useState(false);
-  const [calibrationOpen, setCalibrationOpen] = useState(false);
 
   useRosjectRosbridgeAddress(setUrl);
 
@@ -153,37 +162,22 @@ export default function App() {
 
   return (
     <div className="flex h-screen flex-col">
-      <DashboardHeader
-        status={status}
-        onDisconnect={disconnect}
-        markersOpen={markersOpen}
-        onToggleMarkers={() => setMarkersOpen((open) => !open)}
-        calibrationOpen={calibrationOpen}
-        onToggleCalibration={() => setCalibrationOpen((open) => !open)}
-      />
-      <div className="relative flex-1 overflow-hidden">
-        <main className="absolute inset-0">
-          <RobotViewer ros={ros} markerVisibility={markerVisibility} />
-        </main>
+      <DashboardHeader status={status} onDisconnect={disconnect} />
+      <div className="flex flex-1 overflow-hidden">
+        <LeftPanel
+          ros={ros}
+          markerVisibility={markerVisibility}
+          setMarkerVisibility={setMarkerVisibility}
+        />
+        <div className="relative flex-1 overflow-hidden">
+          <main className="absolute inset-0">
+            <RobotViewer ros={ros} markerVisibility={markerVisibility} />
+          </main>
 
-        {(markersOpen || calibrationOpen) && (
-          <div className="pointer-events-none absolute inset-y-4 left-4 z-10 flex flex-col gap-4 overflow-y-auto">
-            {markersOpen && (
-              <div className="pointer-events-auto shadow-xl">
-                <MarkersPanel value={markerVisibility} onChange={setMarkerVisibility} />
-              </div>
-            )}
-            {calibrationOpen && (
-              <div className="pointer-events-auto shadow-xl">
-                <CalibrationPanel ros={ros} />
-              </div>
-            )}
-          </div>
-        )}
-
-        <div className="pointer-events-none absolute right-4 top-4 z-10">
-          <div className="pointer-events-auto shadow-xl">
-            <CameraFeed ros={ros} />
+          <div className="pointer-events-none absolute right-4 top-4 z-10">
+            <div className="pointer-events-auto shadow-xl">
+              <CameraFeed ros={ros} />
+            </div>
           </div>
         </div>
       </div>

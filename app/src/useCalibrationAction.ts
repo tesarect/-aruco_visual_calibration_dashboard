@@ -10,6 +10,16 @@ import ROSLIB from "roslib";
 const ACTION_NAME = "/calibration_broadcaster_node/calibrate";
 const ACTION_TYPE = "visual_calibration_msgs/action/Calibrate";
 
+// calibration_broadcaster_node.cpp reads "planning_mode" as a plain string
+// param ("cartesian" | "joint_space", anything else throws) and uses it for
+// its own ~/trace_path calls — Calibrate.action's goal has no field to carry
+// this, so it's set as a live ROS2 parameter via the standard
+// rcl_interfaces/srv/SetParameters service instead, before Calibrate is sent.
+const SET_PARAMETERS_SERVICE = "/calibration_broadcaster_node/set_parameters";
+const SET_PARAMETERS_TYPE = "rcl_interfaces/srv/SetParameters";
+const PARAMETER_STRING = 4;
+
+export type PlanningMode = "cartesian" | "joint_space";
 export type CalibrationStatus = "idle" | "running" | "succeeded" | "failed" | "cancelled";
 
 interface CalibrationFeedback {
@@ -28,7 +38,35 @@ export function useCalibrationAction(ros: ROSLIB.Ros | null) {
   const [status, setStatus] = useState<CalibrationStatus>("idle");
   const [feedback, setFeedback] = useState<CalibrationFeedback | null>(null);
   const [result, setResult] = useState<CalibrationResult | null>(null);
+  const [planningModeError, setPlanningModeError] = useState<string | null>(null);
   const goalRef = useRef<ROSLIB.Goal | null>(null);
+
+  const setPlanningMode = useCallback(
+    (mode: PlanningMode) => {
+      if (!ros) return;
+
+      const service = new ROSLIB.Service({
+        ros,
+        name: SET_PARAMETERS_SERVICE,
+        serviceType: SET_PARAMETERS_TYPE,
+      });
+
+      const request = new ROSLIB.ServiceRequest({
+        parameters: [
+          {
+            name: "planning_mode",
+            value: { type: PARAMETER_STRING, string_value: mode },
+          },
+        ],
+      });
+
+      service.callService(request, (response: { results: { successful: boolean; reason: string }[] }) => {
+        const result = response.results?.[0];
+        setPlanningModeError(result && !result.successful ? result.reason : null);
+      });
+    },
+    [ros]
+  );
 
   const start = useCallback(() => {
     if (!ros) return;
@@ -63,5 +101,5 @@ export function useCalibrationAction(ros: ROSLIB.Ros | null) {
     setStatus("cancelled");
   }, []);
 
-  return { status, feedback, result, start, stop };
+  return { status, feedback, result, start, stop, setPlanningMode, planningModeError };
 }

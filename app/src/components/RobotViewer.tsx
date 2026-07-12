@@ -4,7 +4,8 @@ import { OrbitControls } from "@react-three/drei";
 import URDFLoader, { type URDFRobot } from "urdf-loader";
 import ROSLIB from "roslib";
 import { FrameAxes } from "@/components/FrameAxes";
-import { MARKER_FRAMES } from "@/markerFrames";
+import { CalibratedFrameAxes } from "@/components/CalibratedFrameAxes";
+import { MARKER_FRAMES, CALIBRATED_FRAME_ID } from "@/markerFrames";
 import type { MarkerVisibilityState } from "@/components/MarkersPanel";
 
 interface RobotViewerProps {
@@ -112,6 +113,11 @@ export function RobotViewer({ ros, markerVisibility }: RobotViewerProps) {
                 visible={markerVisibility[frame.id] ?? { x: false, y: false, z: false }}
               />
             ))}
+            <CalibratedFrameAxes
+              ros={ros}
+              robot={robot}
+              visible={markerVisibility[CALIBRATED_FRAME_ID] ?? { x: false, y: false, z: false }}
+            />
           </primitive>
         )}
       </Canvas>
