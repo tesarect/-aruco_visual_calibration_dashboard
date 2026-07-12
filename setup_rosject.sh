@@ -4,17 +4,30 @@
 #
 # Usage:
 #   cd webpage_ws
-#   ./setup_rosject.sh
+#   ./setup_rosject.sh [--force-extract-urdf]
 #
 # What it does:
 #   1. Loads nvm (already present on the rosject, just unsourced) and
 #      installs/activates Node 20 LTS, without touching the existing
 #      system Node v8 install used by other tooling.
-#   2. Extracts the live URDF (+ meshes) from the running simulation via
-#      scripts/extract_urdf.py — skipped with a warning if ROS/the sim
-#      isn't up yet, since the rest of the app can still be scaffolded.
+#   2. Extracts the live URDF (+ meshes) from the running sim/real robot
+#      via scripts/extract_urdf.py — SKIPPED if app/public/robot/robot.urdf
+#      already exists (the robot's physical shape — UR3e + RG2 gripper —
+#      is the same whether you're connected to sim or the real robot, so
+#      one extraction covers both; only the live /joint_states values
+#      differ, which the app reads continuously at runtime, not here).
+#      Pass --force-extract-urdf to re-extract anyway (e.g. after a real
+#      hardware change). Skipped with a warning if ROS/the sim isn't up
+#      yet and no cached file exists either.
 #   3. npm installs the React/Vite app under app/.
 set -euo pipefail
+
+FORCE_EXTRACT_URDF=false
+for arg in "$@"; do
+  if [ "$arg" = "--force-extract-urdf" ]; then
+    FORCE_EXTRACT_URDF=true
+  fi
+done
 
 WEBPAGE_WS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_DIR="$WEBPAGE_WS_DIR/app"
@@ -38,16 +51,22 @@ echo "Using node $(node --version), npm $(npm --version)"
 
 echo
 echo "== 2/3: URDF + mesh extraction =="
-if ! command -v ros2 >/dev/null 2>&1; then
-  # rosject shells often need this sourced explicitly (see CLAUDE.md)
-  source /opt/ros/humble/setup.bash 2>/dev/null || true
-fi
-if command -v ros2 >/dev/null 2>&1 && ros2 param get /robot_state_publisher robot_description >/dev/null 2>&1; then
-  python3 "$WEBPAGE_WS_DIR/scripts/extract_urdf.py"
+CACHED_URDF="$APP_DIR/public/robot/robot.urdf"
+if [ -f "$CACHED_URDF" ] && [ "$FORCE_EXTRACT_URDF" = false ]; then
+  echo "Found existing $CACHED_URDF — skipping extraction."
+  echo "(pass --force-extract-urdf to re-extract, e.g. after a real hardware change)"
 else
-  echo "WARNING: /robot_state_publisher isn't up (simulation not running?)."
-  echo "Skipping URDF extraction — run scripts/extract_urdf.py manually later"
-  echo "once the simulation is launched."
+  if ! command -v ros2 >/dev/null 2>&1; then
+    # rosject shells often need this sourced explicitly (see CLAUDE.md)
+    source /opt/ros/humble/setup.bash 2>/dev/null || true
+  fi
+  if command -v ros2 >/dev/null 2>&1 && ros2 topic echo /robot_description --once --timeout 3 >/dev/null 2>&1; then
+    python3 "$WEBPAGE_WS_DIR/scripts/extract_urdf.py"
+  else
+    echo "WARNING: /robot_description isn't being published (sim/real robot not up?)."
+    echo "Skipping URDF extraction — run scripts/extract_urdf.py manually later"
+    echo "once the simulation or real robot connection is up."
+  fi
 fi
 
 echo

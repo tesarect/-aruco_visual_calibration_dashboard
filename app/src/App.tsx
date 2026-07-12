@@ -1,5 +1,9 @@
 import { FormEvent, useEffect, useState } from "react";
-import { useRosbridge } from "./useRosbridge";
+import { useRosbridge } from "@/useRosbridge";
+import { RosbridgeStatusLed } from "@/components/RosbridgeStatusLed";
+import { RobotViewer } from "@/components/RobotViewer";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 const STORAGE_KEY = "rosbridge-url";
 
@@ -7,12 +11,7 @@ interface RosjectConfig {
   rosbridgeAddress: string;
 }
 
-export default function App() {
-  const [url, setUrl] = useState(
-    () => localStorage.getItem(STORAGE_KEY) ?? "ws://localhost:9090"
-  );
-  const { status, errorMessage, connect, disconnect } = useRosbridge();
-
+function useRosjectRosbridgeAddress(setUrl: (url: string) => void) {
   useEffect(() => {
     // Relative, not root-absolute — the page is served under the
     // rosject's /<SLOT_PREFIX>/webpage/ proxy prefix, and a root-absolute
@@ -32,7 +31,75 @@ export default function App() {
         // rosject-config.json is optional (e.g. running outside a
         // rosject) — fall back silently to the existing default.
       });
-  }, []);
+  }, [setUrl]);
+}
+
+function LandingPage({
+  url,
+  setUrl,
+  connecting,
+  errorMessage,
+  onSubmit,
+}: {
+  url: string;
+  setUrl: (url: string) => void;
+  connecting: boolean;
+  errorMessage: string | null;
+  onSubmit: (event: FormEvent) => void;
+}) {
+  return (
+    <main className="mx-auto mt-16 max-w-md font-sans">
+      <h1 className="text-2xl font-semibold">Visual Calibration Dashboard</h1>
+      <p className="mt-2 text-muted-foreground">
+        Enter the rosbridge WebSocket URL (from the rosject's <code>rosbridge_address</code>).
+      </p>
+
+      <form onSubmit={onSubmit} className="mt-4 flex gap-2">
+        <Input
+          type="text"
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          placeholder="ws://<host>:9090"
+          disabled={connecting}
+          className="flex-1"
+        />
+        <Button type="submit" disabled={connecting}>
+          {connecting ? "Connecting..." : "Connect"}
+        </Button>
+      </form>
+
+      {errorMessage && <p className="mt-3 text-destructive">{errorMessage}</p>}
+    </main>
+  );
+}
+
+function DashboardHeader({
+  status,
+  onDisconnect,
+}: {
+  status: ReturnType<typeof useRosbridge>["status"];
+  onDisconnect: () => void;
+}) {
+  return (
+    <header className="flex items-center justify-between border-b px-6 py-3">
+      <span className="font-semibold">Visual Calibration Dashboard</span>
+      <div className="flex items-center gap-4">
+        <RosbridgeStatusLed status={status} />
+        <Button variant="outline" size="sm" onClick={onDisconnect}>
+          Disconnect
+        </Button>
+      </div>
+    </header>
+  );
+}
+
+export default function App() {
+  const [url, setUrl] = useState(
+    () => localStorage.getItem(STORAGE_KEY) ?? "ws://localhost:9090"
+  );
+  const { status, errorMessage, connect, disconnect, ros } = useRosbridge();
+
+  useRosjectRosbridgeAddress(setUrl);
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
@@ -40,42 +107,24 @@ export default function App() {
     connect(url);
   };
 
+  if (status !== "connected") {
+    return (
+      <LandingPage
+        url={url}
+        setUrl={setUrl}
+        connecting={status === "connecting"}
+        errorMessage={errorMessage}
+        onSubmit={handleSubmit}
+      />
+    );
+  }
+
   return (
-    <main style={{ maxWidth: 480, margin: "4rem auto", fontFamily: "sans-serif" }}>
-      <h1>Visual Calibration Dashboard</h1>
-      <p>Enter the rosbridge WebSocket URL (from the rosject's <code>rosbridge_address</code>).</p>
-
-      <form onSubmit={handleSubmit} style={{ display: "flex", gap: "0.5rem" }}>
-        <input
-          type="text"
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          placeholder="ws://<host>:9090"
-          style={{ flex: 1, padding: "0.5rem" }}
-          disabled={status === "connecting"}
-        />
-        <button type="submit" disabled={status === "connecting"}>
-          {status === "connecting" ? "Connecting..." : "Connect"}
-        </button>
-      </form>
-
-      <div style={{ marginTop: "1rem" }}>
-        <strong>Status:</strong> {status}
-        {status === "connected" && (
-          <button style={{ marginLeft: "1rem" }} onClick={disconnect}>
-            Disconnect
-          </button>
-        )}
-        {errorMessage && (
-          <p style={{ color: "crimson" }}>{errorMessage}</p>
-        )}
-      </div>
-
-      {status === "connected" && (
-        <p style={{ marginTop: "2rem", color: "#666" }}>
-          Connected. Robot model rendering comes next once this is confirmed working.
-        </p>
-      )}
-    </main>
+    <div className="flex h-screen flex-col">
+      <DashboardHeader status={status} onDisconnect={disconnect} />
+      <main className="flex-1">
+        <RobotViewer ros={ros} />
+      </main>
+    </div>
   );
 }

@@ -36,6 +36,10 @@ the live URDF + meshes from the running simulation (skipped if the sim isn't
 up yet — rerun `npm run extract-urdf` from `app/` later), and `npm install`s
 the app.
 
+> [ Important ] For urdf to be generated wither simulation should be up and running or should be connected to Real robot environment. 
+
+> [ Note ] setup_rosject.sh calls it once, only during that setup script, and only if public/robot/robot.urdf doesn't already exist (or pass --force-extract-urdf in as argument).
+
 ## Viewing through webpage_address (build + preview, not dev)
 
 Every new rosject session loses Node/nvm state (non-persistent disk) — source
