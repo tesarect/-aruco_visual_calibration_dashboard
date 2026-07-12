@@ -4,6 +4,7 @@ import { RosbridgeStatusLed } from "@/components/RosbridgeStatusLed";
 import { RobotViewer } from "@/components/RobotViewer";
 import { MarkersPanel, useMarkerVisibility } from "@/components/MarkersPanel";
 import { CalibrationPanel } from "@/components/CalibrationPanel";
+import { CameraFeed } from "@/components/CameraFeed";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -179,6 +180,12 @@ export default function App() {
             )}
           </div>
         )}
+
+        <div className="pointer-events-none absolute right-4 top-4 z-10">
+          <div className="pointer-events-auto shadow-xl">
+            <CameraFeed ros={ros} />
+          </div>
+        </div>
       </div>
     </div>
   );

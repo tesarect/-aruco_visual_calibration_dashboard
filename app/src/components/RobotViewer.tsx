@@ -76,15 +76,29 @@ export function RobotViewer({ ros, markerVisibility }: RobotViewerProps) {
   }
 
   return (
-    <div className="h-full w-full">
+    <div
+      className="h-full w-full"
+      style={{
+        background:
+          "radial-gradient(ellipse at 50% 0%, #1e293b 0%, #0f172a 45%, #020617 100%)",
+      }}
+    >
       {/* frameloop="always": setJointValue() (called from the /joint_states
           handler above) mutates the URDFRobot's underlying three.js meshes
           directly, outside React's render cycle — R3F's default "demand"
           frameloop only re-renders on tracked prop/state changes, so those
           mutations would never actually get painted without this. */}
-      <Canvas frameloop="always" camera={{ position: [1.5, 1.5, 1.5], fov: 50 }}>
-        <ambientLight intensity={0.6} />
+      <Canvas
+        frameloop="always"
+        camera={{ position: [1.5, 1.5, 1.5], fov: 50 }}
+        gl={{ alpha: true }}
+        style={{ background: "transparent" }}
+      >
+        <ambientLight intensity={0.5} />
         <directionalLight position={[2, 4, 2]} intensity={1} />
+        {/* Distant "sun" light from high overhead, for extra depth/shading
+            on top of the closer fill light above. */}
+        <directionalLight position={[0, 20, 0]} intensity={0.6} />
         {/* Click-drag to orbit, scroll to zoom, right-click-drag to pan —
             the standard @react-three/fiber camera control component. */}
         <OrbitControls makeDefault />
