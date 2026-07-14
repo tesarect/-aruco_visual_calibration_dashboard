@@ -58,7 +58,7 @@ re-confirming.
 
 Open `webpage_address`'s URL in a browser, and enter the rosbridge WebSocket
 URL from `rosbridge_address` on the landing page (rosbridge itself must be
-separately launched — see `sim_tmux_main3.sh` — it does not start
+separately launched — see `sim_tmux_webstack.sh` — it does not start
 automatically).
 
 **Why build+preview, not `npm run dev`:** `webpage_address`'s public URL has

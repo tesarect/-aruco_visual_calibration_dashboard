@@ -135,7 +135,7 @@ function LeftPanel({
 
       <div className="flex flex-col gap-3">
         <SectionLabel>Prefixed Positions</SectionLabel>
-        <PresetPositionsPanel />
+        <PresetPositionsPanel ros={ros} />
       </div>
 
       <div className="flex flex-col gap-3">
@@ -204,7 +204,7 @@ export default function App() {
             </div>
           </div>
 
-          <div className="pointer-events-none absolute bottom-4 right-4 z-10">
+          <div className="pointer-events-none absolute bottom-4 left-1/2 right-4 z-10">
             <LogsFeed lines={logLines} />
           </div>
         </div>

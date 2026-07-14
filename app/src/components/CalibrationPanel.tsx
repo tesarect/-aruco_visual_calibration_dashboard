@@ -21,6 +21,13 @@ export function CalibrationPanel({ ros }: CalibrationPanelProps) {
   const [planningMode, setPlanningModeLocal] = useState<PlanningMode>("cartesian");
   const running = status === "running";
 
+  console.log("[calibration] CalibrationPanel render", {
+    hasRos: !!ros,
+    status,
+    running,
+    calibrateDisabled: running || !ros,
+  });
+
   const handlePlanningModeChange = (mode: PlanningMode) => {
     setPlanningModeLocal(mode);
     setPlanningMode(mode);

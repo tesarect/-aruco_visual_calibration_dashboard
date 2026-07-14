@@ -18,7 +18,7 @@ export interface LogLine {
   message: string;
 }
 
-const MAX_LINES = 8;
+const MAX_LINES = 20;
 
 /**
  * Every ROS2 node publishes to /rosout by default (rcl_interfaces/msg/Log) —

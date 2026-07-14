@@ -43,7 +43,11 @@ export function useCalibrationAction(ros: ROSLIB.Ros | null) {
 
   const setPlanningMode = useCallback(
     (mode: PlanningMode) => {
-      if (!ros) return;
+      console.log("[calibration] setPlanningMode called", { mode, hasRos: !!ros });
+      if (!ros) {
+        console.warn("[calibration] setPlanningMode aborted: ros is null");
+        return;
+      }
 
       const service = new ROSLIB.Service({
         ros,
@@ -60,16 +64,29 @@ export function useCalibrationAction(ros: ROSLIB.Ros | null) {
         ],
       });
 
-      service.callService(request, (response: { results: { successful: boolean; reason: string }[] }) => {
-        const result = response.results?.[0];
-        setPlanningModeError(result && !result.successful ? result.reason : null);
-      });
+      console.log("[calibration] calling /set_parameters", request);
+      service.callService(
+        request,
+        (response: { results: { successful: boolean; reason: string }[] }) => {
+          console.log("[calibration] /set_parameters response", response);
+          const result = response.results?.[0];
+          setPlanningModeError(result && !result.successful ? result.reason : null);
+        },
+        (error: unknown) => {
+          console.error("[calibration] /set_parameters service call failed", error);
+          setPlanningModeError(String(error));
+        }
+      );
     },
     [ros]
   );
 
   const start = useCallback(() => {
-    if (!ros) return;
+    console.log("[calibration] start() called", { hasRos: !!ros });
+    if (!ros) {
+      console.warn("[calibration] start aborted: ros is null");
+      return;
+    }
 
     setStatus("running");
     setFeedback(null);
@@ -87,16 +104,25 @@ export function useCalibrationAction(ros: ROSLIB.Ros | null) {
     });
     goalRef.current = goal;
 
-    goal.on("feedback", (fb: CalibrationFeedback) => setFeedback(fb));
+    goal.on("feedback", (fb: CalibrationFeedback) => {
+      console.log("[calibration] feedback", fb);
+      setFeedback(fb);
+    });
     goal.on("result", (res: CalibrationResult) => {
+      console.log("[calibration] result", res);
       setResult(res);
       setStatus(res.success ? "succeeded" : "failed");
     });
+    goal.on("timeout", () => {
+      console.warn("[calibration] goal timed out waiting for the action server");
+    });
 
+    console.log("[calibration] sending goal to", ACTION_NAME);
     goal.send();
   }, [ros]);
 
   const stop = useCallback(() => {
+    console.log("[calibration] stop() called", { hasGoal: !!goalRef.current });
     goalRef.current?.cancel();
     setStatus("cancelled");
   }, []);
