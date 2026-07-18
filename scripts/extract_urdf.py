@@ -26,6 +26,8 @@ truncated lines), so it's unsuitable for extracting an exact large string
 payload. Run this with the simulation/real robot connection already up.
 See ../README.md.
 """
+import argparse
+import hashlib
 import re
 import shutil
 import subprocess
@@ -38,7 +40,7 @@ from rclpy.qos import QoSDurabilityPolicy, QoSProfile, QoSReliabilityPolicy
 from std_msgs.msg import String
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-APP_PUBLIC_ROBOT_DIR = SCRIPT_DIR.parent / "app" / "public" / "robot"
+APP_PUBLIC_ROBOT_ROOT = SCRIPT_DIR.parent / "app" / "public" / "robot"
 SUBSCRIBE_TIMEOUT_SEC = 5.0
 
 
@@ -100,9 +102,9 @@ PACKAGE_URI_RE = re.compile(r'package://([^/]+)/([^"\']+)')
 FILE_URI_RE = re.compile(r'file://(/[^"\']+)')
 
 
-def resolve_and_copy_meshes(urdf_text: str) -> str:
+def resolve_and_copy_meshes(urdf_text: str, robot_dir: Path) -> str:
     pkg_prefix_cache = {}
-    meshes_dir = APP_PUBLIC_ROBOT_DIR / "meshes"
+    meshes_dir = robot_dir / "meshes"
     meshes_dir.mkdir(parents=True, exist_ok=True)
 
     def replace_package_uri(match: re.Match) -> str:
@@ -172,23 +174,93 @@ def resolve_and_copy_meshes(urdf_text: str) -> str:
     return urdf_text
 
 
-def main():
-    print("Fetching /robot_description topic ...")
+def hash_text(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def hash_file_path(robot_dir: Path) -> Path:
+    return robot_dir / ".robot_description.sha256"
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--env",
+        choices=["sim", "real"],
+        required=True,
+        help=(
+            "Which robot.urdf/meshes tree to write into — sim (RG2 gripper) "
+            "and real (Robotiq 85 gripper) have structurally different "
+            "kinematic chains/link names, so they're kept as separate asset "
+            "trees (public/robot/sim/, public/robot/real/) rather than one "
+            "shared robot.urdf that gets silently overwritten by whichever "
+            "environment was extracted last."
+        ),
+    )
+    parser.add_argument(
+        "--check-stale",
+        action="store_true",
+        help=(
+            "Don't extract — just fetch the live /robot_description, hash "
+            "it, and compare against the hash saved next to the cached "
+            "robot.urdf from the last extraction for this env. Exits 0 "
+            "(cache is current, nothing to do) or 1 (stale/missing cache, "
+            "re-extraction needed) — no other output on stdout, so a "
+            "calling shell script can branch on the exit code alone. Used "
+            "by setup_rosject.sh to auto-detect a structural robot_description "
+            "change (e.g. an SRDF chain edit) without requiring the caller "
+            "to remember --force-extract-urdf by hand."
+        ),
+    )
+    return parser.parse_args()
+
+
+def check_stale(env: str) -> None:
+    robot_dir = APP_PUBLIC_ROBOT_ROOT / env
+    saved_hash_path = hash_file_path(robot_dir)
+    cached_urdf = robot_dir / "robot.urdf"
+
+    if not cached_urdf.exists() or not saved_hash_path.exists():
+        sys.exit(1)  # nothing cached yet — treat as stale
+
     urdf_text = get_robot_description()
     if not urdf_text:
         sys.exit(
-            "robot_description is empty. Is the simulation running and is "
-            "/robot_description being published?"
+            "robot_description is empty. Is the simulation/real robot "
+            "connection running and is /robot_description being published?"
+        )
+
+    live_hash = hash_text(urdf_text)
+    saved_hash = saved_hash_path.read_text().strip()
+    sys.exit(0 if live_hash == saved_hash else 1)
+
+
+def main():
+    args = parse_args()
+
+    if args.check_stale:
+        check_stale(args.env)
+        return
+
+    robot_dir = APP_PUBLIC_ROBOT_ROOT / args.env
+
+    print(f"Fetching /robot_description topic (env={args.env}) ...")
+    urdf_text = get_robot_description()
+    if not urdf_text:
+        sys.exit(
+            "robot_description is empty. Is the simulation/real robot "
+            "connection running and is /robot_description being published?"
         )
 
     print("Resolving package:// mesh URIs and copying mesh files ...")
-    rewritten = resolve_and_copy_meshes(urdf_text)
+    rewritten = resolve_and_copy_meshes(urdf_text, robot_dir)
 
-    APP_PUBLIC_ROBOT_DIR.mkdir(parents=True, exist_ok=True)
-    out_path = APP_PUBLIC_ROBOT_DIR / "robot.urdf"
+    robot_dir.mkdir(parents=True, exist_ok=True)
+    out_path = robot_dir / "robot.urdf"
     out_path.write_text(rewritten)
+    hash_file_path(robot_dir).write_text(hash_text(urdf_text))
     print(f"Wrote {out_path}")
-    print(f"Meshes copied under {APP_PUBLIC_ROBOT_DIR / 'meshes'}")
+    print(f"Meshes copied under {robot_dir / 'meshes'}")
 
 
 if __name__ == "__main__":

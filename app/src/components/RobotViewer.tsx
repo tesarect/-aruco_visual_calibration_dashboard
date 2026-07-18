@@ -5,11 +5,12 @@ import URDFLoader, { type URDFRobot } from "urdf-loader";
 import ROSLIB from "roslib";
 import { FrameAxes } from "@/components/FrameAxes";
 import { CalibratedFrameAxes } from "@/components/CalibratedFrameAxes";
-import { MARKER_FRAMES, CALIBRATED_FRAME_ID } from "@/markerFrames";
+import { MARKER_FRAMES_BY_ENV, CALIBRATED_FRAME_ID, type RobotEnv } from "@/markerFrames";
 import type { MarkerVisibilityState } from "@/components/MarkersPanel";
 
 interface RobotViewerProps {
   ros: ROSLIB.Ros | null;
+  env: RobotEnv | null;
   markerVisibility: MarkerVisibilityState;
 }
 
@@ -21,21 +22,30 @@ interface JointStateMessage {
 // Matches vite.config.ts's base:"./" and the /robot/... paths
 // extract_urdf.py rewrites mesh references to (see webpage_ws/README.md) —
 // fetched relative to the current page, same as every other static asset.
-const ROBOT_URDF_PATH = "./robot/robot.urdf";
+// Sim (RG2 gripper) and real (Robotiq 85 gripper) have structurally
+// different kinematic chains, so each env's extraction writes to its own
+// subtree (public/robot/<env>/) rather than one shared robot.urdf that gets
+// silently overwritten by whichever environment was extracted last — see
+// scripts/extract_urdf.py's --env flag.
+function robotUrdfPath(env: RobotEnv) {
+  return `./robot/${env}/robot.urdf`;
+}
 
-function useUrdfRobot() {
+function useUrdfRobot(env: RobotEnv | null) {
   const [robot, setRobot] = useState<URDFRobot | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!env) return;
+
     const loader = new URDFLoader();
     loader.load(
-      ROBOT_URDF_PATH,
+      robotUrdfPath(env),
       (result) => setRobot(result),
       undefined,
       (err) => setError(err?.message ?? "Failed to load robot URDF")
     );
-  }, []);
+  }, [env]);
 
   return { robot, error };
 }
@@ -64,8 +74,8 @@ function useJointStates(ros: ROSLIB.Ros | null, robot: URDFRobot | null) {
   }, [ros, robot]);
 }
 
-export function RobotViewer({ ros, markerVisibility }: RobotViewerProps) {
-  const { robot, error } = useUrdfRobot();
+export function RobotViewer({ ros, env, markerVisibility }: RobotViewerProps) {
+  const { robot, error } = useUrdfRobot(env);
   useJointStates(ros, robot);
 
   if (error) {
@@ -75,6 +85,16 @@ export function RobotViewer({ ros, markerVisibility }: RobotViewerProps) {
       </div>
     );
   }
+
+  if (!env) {
+    return (
+      <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+        Waiting for /joint_states to detect sim vs. real...
+      </div>
+    );
+  }
+
+  const markerFrames = MARKER_FRAMES_BY_ENV[env];
 
   return (
     <div
@@ -105,7 +125,7 @@ export function RobotViewer({ ros, markerVisibility }: RobotViewerProps) {
         <OrbitControls makeDefault />
         {robot && (
           <primitive object={robot} rotation={[-Math.PI / 2, 0, 0]}>
-            {MARKER_FRAMES.map((frame) => (
+            {markerFrames.map((frame) => (
               <FrameAxes
                 key={frame.id}
                 robot={robot}
@@ -116,6 +136,7 @@ export function RobotViewer({ ros, markerVisibility }: RobotViewerProps) {
             <CalibratedFrameAxes
               ros={ros}
               robot={robot}
+              env={env}
               visible={markerVisibility[CALIBRATED_FRAME_ID] ?? { x: false, y: false, z: false }}
             />
           </primitive>

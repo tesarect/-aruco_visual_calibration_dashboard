@@ -10,7 +10,7 @@ import {
   DrawerTitle,
   DrawerTrigger,
 } from "@/components/ui/drawer";
-import { MARKER_FRAMES, CALIBRATED_FRAME_ID } from "@/markerFrames";
+import { MARKER_FRAMES_BY_ENV, CALIBRATED_FRAME_ID, type RobotEnv } from "@/markerFrames";
 import type { AxisVisibility } from "@/components/FrameAxes";
 
 export type MarkerVisibilityState = Record<string, AxisVisibility>;
@@ -20,13 +20,20 @@ const ALL_HIDDEN: AxisVisibility = { x: false, y: false, z: false };
 // Calibrated frame only exists once a calibration run has completed (see
 // CalibratedFrameAxes) but its toggle row is shown alongside the rest from
 // the start — same tree-view shape, it just stays dark until broadcast.
-const ALL_FRAME_ROWS = [
-  ...MARKER_FRAMES.map((f) => ({ id: f.id, label: f.label })),
-  { id: CALIBRATED_FRAME_ID, label: "Camera (calibrated)" },
-];
+// Frame rows themselves are env-dependent (sim/real have different
+// gripper/marker link names — see markerFrames.ts), so this can't be a
+// module-level constant anymore; it's derived per-render from whichever
+// env RobotViewer's useRobotEnv has detected.
+function frameRowsForEnv(env: RobotEnv | null) {
+  const frames = env ? MARKER_FRAMES_BY_ENV[env] : [];
+  return [
+    ...frames.map((f) => ({ id: f.id, label: f.label })),
+    { id: CALIBRATED_FRAME_ID, label: "Camera (calibrated)" },
+  ];
+}
 
 function initialState(): MarkerVisibilityState {
-  return Object.fromEntries(ALL_FRAME_ROWS.map((f) => [f.id, { ...ALL_HIDDEN }]));
+  return {};
 }
 
 const AXIS_LABEL: Record<keyof AxisVisibility, string> = {
@@ -42,6 +49,7 @@ const AXIS_DOT_CLASS: Record<keyof AxisVisibility, string> = {
 };
 
 interface MarkersPanelProps {
+  env: RobotEnv | null;
   value: MarkerVisibilityState;
   onChange: (value: MarkerVisibilityState) => void;
 }
@@ -50,7 +58,9 @@ export function useMarkerVisibility() {
   return useState<MarkerVisibilityState>(initialState);
 }
 
-export function MarkersPanel({ value, onChange }: MarkersPanelProps) {
+export function MarkersPanel({ env, value, onChange }: MarkersPanelProps) {
+  const frameRows = frameRowsForEnv(env);
+
   const setAxis = (frameId: string, axis: keyof AxisVisibility, checked: boolean) => {
     onChange({
       ...value,
@@ -77,7 +87,7 @@ export function MarkersPanel({ value, onChange }: MarkersPanelProps) {
           <DrawerTitle>Visual Markers</DrawerTitle>
         </DrawerHeader>
         <div className="flex flex-col gap-3 overflow-y-auto p-4">
-          {ALL_FRAME_ROWS.map((frame) => {
+          {frameRows.map((frame) => {
             const axes = value[frame.id] ?? ALL_HIDDEN;
             const allOn = axes.x && axes.y && axes.z;
             const allOff = !axes.x && !axes.y && !axes.z;

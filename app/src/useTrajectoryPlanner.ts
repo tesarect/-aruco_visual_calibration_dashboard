@@ -81,6 +81,11 @@ export function useTrajectoryPlanner(ros: ROSLIB.Ros | null) {
         const request = new ROSLIB.ServiceRequest({
           waypoints: [poseResponse.standoff_pose],
           planning_mode: PLANNING_MODE_JOINT_SPACE,
+          // pose_name only means something for a single-waypoint call (true
+          // here) — trajectory_planner publishes it verbatim on
+          // ~/current_pose_name once the move succeeds, and uses it as the
+          // ~/planning_failure `context` if it fails instead.
+          pose_name: "cal_ready",
         });
 
         console.log("[trajectory] calling", TRACE_PATH_SERVICE, request);

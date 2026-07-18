@@ -3,7 +3,7 @@ import * as THREE from "three";
 import ROSLIB from "roslib";
 import type { URDFRobot } from "urdf-loader";
 import type { AxisVisibility } from "@/components/FrameAxes";
-import { CALIBRATED_FRAME_NAME, KNOWN_CHAIN_LINK_NAME } from "@/markerFrames";
+import { CALIBRATED_FRAME_NAME_BY_ENV, KNOWN_CHAIN_LINK_NAME, type RobotEnv } from "@/markerFrames";
 
 const AXIS_COLORS: Record<"x" | "y" | "z", number> = {
   x: 0xff3b30,
@@ -37,6 +37,7 @@ interface TfMessage {
 interface CalibratedFrameAxesProps {
   ros: ROSLIB.Ros | null;
   robot: URDFRobot;
+  env: RobotEnv;
   visible: AxisVisibility;
 }
 
@@ -47,7 +48,7 @@ interface CalibratedFrameAxesProps {
  * subscribe to TF directly and parent itself to the known_chain_frame link
  * (base_link in sim) using the looked-up transform as a fixed local offset.
  */
-export function CalibratedFrameAxes({ ros, robot, visible }: CalibratedFrameAxesProps) {
+export function CalibratedFrameAxes({ ros, robot, env, visible }: CalibratedFrameAxesProps) {
   const groupRef = useRef<THREE.Group | null>(null);
   const attachedRef = useRef(false);
 
@@ -126,8 +127,9 @@ export function CalibratedFrameAxes({ ros, robot, visible }: CalibratedFrameAxes
       messageType: "tf2_msgs/TFMessage",
     });
 
+    const calibratedFrameName = CALIBRATED_FRAME_NAME_BY_ENV[env];
     const handleMessage = (message: TfMessage) => {
-      const match = message.transforms.find((t) => t.child_frame_id === CALIBRATED_FRAME_NAME);
+      const match = message.transforms.find((t) => t.child_frame_id === calibratedFrameName);
       if (!match || !groupRef.current) return;
 
       const { translation, rotation } = match.transform;
@@ -138,7 +140,7 @@ export function CalibratedFrameAxes({ ros, robot, visible }: CalibratedFrameAxes
 
     tfStatic.subscribe(handleMessage);
     return () => tfStatic.unsubscribe(handleMessage);
-  }, [ros]);
+  }, [ros, env]);
 
   useEffect(() => {
     const group = groupRef.current;

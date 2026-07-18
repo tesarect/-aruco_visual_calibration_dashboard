@@ -9,6 +9,9 @@ import { LogsPanel, LOG_NODES } from "@/components/LogsPanel";
 import { LogsFeed } from "@/components/LogsFeed";
 import { CameraFeed } from "@/components/CameraFeed";
 import { useRosout } from "@/useRosout";
+import { useTrajectoryState } from "@/useTrajectoryState";
+import { useRobotEnv } from "@/useRobotEnv";
+import type { RobotEnv } from "@/markerFrames";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
@@ -84,13 +87,22 @@ function LandingPage({
 function DashboardHeader({
   status,
   onDisconnect,
+  currentPoseName,
 }: {
   status: ReturnType<typeof useRosbridge>["status"];
   onDisconnect: () => void;
+  currentPoseName: string | null;
 }) {
   return (
     <header className="flex shrink-0 items-center justify-between border-b px-6 py-3">
-      <span className="font-semibold">Visual Calibration Dashboard</span>
+      <div className="flex items-center gap-4">
+        <span className="font-semibold">Visual Calibration Dashboard</span>
+        {currentPoseName && (
+          <span className="rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">
+            Pose: {currentPoseName}
+          </span>
+        )}
+      </div>
       <div className="flex items-center gap-4">
         <RosbridgeStatusLed status={status} />
         <Button variant="outline" size="sm" onClick={onDisconnect}>
@@ -98,6 +110,30 @@ function DashboardHeader({
         </Button>
       </div>
     </header>
+  );
+}
+
+function PlanningFailureBanner({
+  failure,
+  onDismiss,
+}: {
+  failure: { context: string; message: string } | null;
+  onDismiss: () => void;
+}) {
+  if (!failure) return null;
+
+  return (
+    <div className="pointer-events-auto flex items-start gap-3 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 shadow-xl">
+      <div className="flex flex-col">
+        <span className="text-xs font-medium uppercase text-destructive/80">
+          Planning failure — {failure.context}
+        </span>
+        <span className="text-sm text-destructive">{failure.message}</span>
+      </div>
+      <Button variant="ghost" size="sm" onClick={onDismiss}>
+        Dismiss
+      </Button>
+    </div>
   );
 }
 
@@ -115,12 +151,14 @@ function SectionLabel({ children }: { children: string }) {
 
 function LeftPanel({
   ros,
+  env,
   markerVisibility,
   setMarkerVisibility,
   enabledLogNodes,
   setEnabledLogNodes,
 }: {
   ros: ReturnType<typeof useRosbridge>["ros"];
+  env: RobotEnv | null;
   markerVisibility: ReturnType<typeof useMarkerVisibility>[0];
   setMarkerVisibility: ReturnType<typeof useMarkerVisibility>[1];
   enabledLogNodes: Set<string>;
@@ -140,7 +178,7 @@ function LeftPanel({
 
       <div className="flex flex-col gap-3">
         <SectionLabel>Visual Markers</SectionLabel>
-        <MarkersPanel value={markerVisibility} onChange={setMarkerVisibility} />
+        <MarkersPanel env={env} value={markerVisibility} onChange={setMarkerVisibility} />
       </div>
 
       <div className="flex flex-col gap-3">
@@ -161,6 +199,8 @@ export default function App() {
     () => new Set(LOG_NODES.map((node) => node.id))
   );
   const logLines = useRosout(ros, enabledLogNodes);
+  const { currentPoseName, latestFailure, dismissFailure } = useTrajectoryState(ros);
+  const env = useRobotEnv(ros);
 
   useRosjectRosbridgeAddress(setUrl);
 
@@ -184,10 +224,15 @@ export default function App() {
 
   return (
     <div className="flex h-screen flex-col">
-      <DashboardHeader status={status} onDisconnect={disconnect} />
+      <DashboardHeader
+        status={status}
+        onDisconnect={disconnect}
+        currentPoseName={currentPoseName}
+      />
       <div className="flex flex-1 overflow-hidden">
         <LeftPanel
           ros={ros}
+          env={env}
           markerVisibility={markerVisibility}
           setMarkerVisibility={setMarkerVisibility}
           enabledLogNodes={enabledLogNodes}
@@ -195,8 +240,14 @@ export default function App() {
         />
         <div className="relative flex-1 overflow-hidden">
           <main className="absolute inset-0">
-            <RobotViewer ros={ros} markerVisibility={markerVisibility} />
+            <RobotViewer ros={ros} env={env} markerVisibility={markerVisibility} />
           </main>
+
+          {latestFailure && (
+            <div className="pointer-events-none absolute left-1/2 top-4 z-20 -translate-x-1/2">
+              <PlanningFailureBanner failure={latestFailure} onDismiss={dismissFailure} />
+            </div>
+          )}
 
           <div className="pointer-events-none absolute right-4 top-4 z-10">
             <div className="pointer-events-auto shadow-xl">
