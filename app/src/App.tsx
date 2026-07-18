@@ -5,6 +5,7 @@ import { RobotViewer } from "@/components/RobotViewer";
 import { MarkersPanel, useMarkerVisibility } from "@/components/MarkersPanel";
 import { CalibrationPanel } from "@/components/CalibrationPanel";
 import { PresetPositionsPanel } from "@/components/PresetPositionsPanel";
+import { ControlPanel } from "@/components/ControlPanel";
 import { LogsPanel, LOG_NODES } from "@/components/LogsPanel";
 import { LogsFeed } from "@/components/LogsFeed";
 import { CameraFeed } from "@/components/CameraFeed";
@@ -177,8 +178,11 @@ function LeftPanel({
       </div>
 
       <div className="flex flex-col gap-3">
-        <SectionLabel>Visual Markers</SectionLabel>
-        <MarkersPanel env={env} value={markerVisibility} onChange={setMarkerVisibility} />
+        <Separator />
+        <div className="flex flex-col gap-2">
+          <ControlPanel ros={ros} env={env} />
+          <MarkersPanel env={env} value={markerVisibility} onChange={setMarkerVisibility} />
+        </div>
       </div>
 
       <div className="flex flex-col gap-3">
