@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import ROSLIB from "roslib";
+import * as ROSLIB from "roslib";
 
 const CURRENT_POSE_NAME_TOPIC = "/trajectory_planner/current_pose_name";
 const PLANNING_FAILURE_TOPIC = "/trajectory_planner/planning_failure";

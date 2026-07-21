@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import ROSLIB from "roslib";
+import * as ROSLIB from "roslib";
 import type { RobotEnv } from "@/markerFrames";
 
 interface JointStateMessage {

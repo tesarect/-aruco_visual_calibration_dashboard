@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import URDFLoader, { type URDFRobot } from "urdf-loader";
-import ROSLIB from "roslib";
+import * as ROSLIB from "roslib";
 import { FrameAxes } from "@/components/FrameAxes";
 import { CalibratedFrameAxes } from "@/components/CalibratedFrameAxes";
 import { MARKER_FRAMES_BY_ENV, CALIBRATED_FRAME_ID, type RobotEnv } from "@/markerFrames";
@@ -81,7 +81,7 @@ export function RobotViewer({ ros, env, markerVisibility }: RobotViewerProps) {
   if (error) {
     return (
       <div className="flex h-full w-full items-center justify-center text-destructive">
-        Failed to load robot model: {error}
+        Failed to load robot model: {error} (check robot.urdf)
       </div>
     );
   }

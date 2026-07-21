@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import ROSLIB from "roslib";
+import * as ROSLIB from "roslib";
 import type { Pose } from "@/useGripperPose";
 
 const TRACE_PATH_SERVICE = "/trajectory_planner/trace_path";
@@ -54,14 +54,14 @@ export function useNudgeControl(ros: ROSLIB.Ros | null) {
         serviceType: TRACE_PATH_TYPE,
       });
 
-      const request = new ROSLIB.ServiceRequest({
+      const request = {
         waypoints: [targetPose],
         // Cartesian, not joint-space — a nudge along one axis should move in
         // a straight line along that axis, not an arbitrary joint-space path
         // that happens to end at the same point.
         planning_mode: PLANNING_MODE_CARTESIAN,
         pose_name: `nudge_${axis}${direction > 0 ? "+" : "-"}`,
-      });
+      };
 
       console.log("[nudge] calling", TRACE_PATH_SERVICE, request);
       tracePath.callService(

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import * as THREE from "three";
-import ROSLIB from "roslib";
+import * as ROSLIB from "roslib";
 import type { RobotEnv } from "@/markerFrames";
 
 // Gripper tip per env, plus the exact ordered chain of links from base_link

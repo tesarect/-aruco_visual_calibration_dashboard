@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import ROSLIB from "roslib";
+import * as ROSLIB from "roslib";
 
 export type RosConnectionStatus = "idle" | "connecting" | "connected" | "error";
 

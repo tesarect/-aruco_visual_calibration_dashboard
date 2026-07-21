@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
-import ROSLIB from "roslib";
+import * as ROSLIB from "roslib";
 import type { URDFRobot } from "urdf-loader";
 import type { AxisVisibility } from "@/components/FrameAxes";
 import { CALIBRATED_FRAME_NAME_BY_ENV, KNOWN_CHAIN_LINK_NAME, type RobotEnv } from "@/markerFrames";

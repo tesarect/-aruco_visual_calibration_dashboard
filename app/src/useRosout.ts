@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import ROSLIB from "roslib";
+import * as ROSLIB from "roslib";
 
 // rcl_interfaces/msg/Log level constants (/opt/ros/humble/share/rcl_interfaces/msg/Log.msg)
 export const LOG_LEVEL = { DEBUG: 10, INFO: 20, WARN: 30, ERROR: 40, FATAL: 50 } as const;

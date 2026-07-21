@@ -157,6 +157,8 @@ function LeftPanel({
   setMarkerVisibility,
   enabledLogNodes,
   setEnabledLogNodes,
+  logsVisible,
+  setLogsVisible,
 }: {
   ros: ReturnType<typeof useRosbridge>["ros"];
   env: RobotEnv | null;
@@ -164,6 +166,8 @@ function LeftPanel({
   setMarkerVisibility: ReturnType<typeof useMarkerVisibility>[1];
   enabledLogNodes: Set<string>;
   setEnabledLogNodes: (nodes: Set<string>) => void;
+  logsVisible: boolean;
+  setLogsVisible: (visible: boolean) => void;
 }) {
   return (
     <aside className="flex w-96 shrink-0 flex-col gap-6 overflow-y-auto border-r p-6">
@@ -187,7 +191,12 @@ function LeftPanel({
 
       <div className="flex flex-col gap-3">
         <SectionLabel>Logs</SectionLabel>
-        <LogsPanel enabledNodes={enabledLogNodes} onChange={setEnabledLogNodes} />
+        <LogsPanel
+          enabledNodes={enabledLogNodes}
+          onChange={setEnabledLogNodes}
+          logsVisible={logsVisible}
+          onLogsVisibleChange={setLogsVisible}
+        />
       </div>
     </aside>
   );
@@ -202,6 +211,7 @@ export default function App() {
   const [enabledLogNodes, setEnabledLogNodes] = useState<Set<string>>(
     () => new Set(LOG_NODES.map((node) => node.id))
   );
+  const [logsVisible, setLogsVisible] = useState(false);
   const logLines = useRosout(ros, enabledLogNodes);
   const { currentPoseName, latestFailure, dismissFailure } = useTrajectoryState(ros);
   const env = useRobotEnv(ros);
@@ -241,6 +251,8 @@ export default function App() {
           setMarkerVisibility={setMarkerVisibility}
           enabledLogNodes={enabledLogNodes}
           setEnabledLogNodes={setEnabledLogNodes}
+          logsVisible={logsVisible}
+          setLogsVisible={setLogsVisible}
         />
         <div className="relative flex-1 overflow-hidden">
           <main className="absolute inset-0">
@@ -255,13 +267,15 @@ export default function App() {
 
           <div className="pointer-events-none absolute right-4 top-4 z-10">
             <div className="pointer-events-auto shadow-xl">
-              <CameraFeed ros={ros} />
+              <CameraFeed ros={ros} env={env} />
             </div>
           </div>
 
-          <div className="pointer-events-none absolute bottom-4 left-1/2 right-4 z-10">
-            <LogsFeed lines={logLines} />
-          </div>
+          {logsVisible && (
+            <div className="pointer-events-none absolute bottom-4 left-1/2 right-4 z-10">
+              <LogsFeed lines={logLines} />
+            </div>
+          )}
         </div>
       </div>
     </div>

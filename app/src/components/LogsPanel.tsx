@@ -1,4 +1,6 @@
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 export interface LogNodeDef {
   id: string;
@@ -17,9 +19,11 @@ export const LOG_NODES: LogNodeDef[] = [
 interface LogsPanelProps {
   enabledNodes: Set<string>;
   onChange: (enabledNodes: Set<string>) => void;
+  logsVisible: boolean;
+  onLogsVisibleChange: (visible: boolean) => void;
 }
 
-export function LogsPanel({ enabledNodes, onChange }: LogsPanelProps) {
+export function LogsPanel({ enabledNodes, onChange, logsVisible, onLogsVisibleChange }: LogsPanelProps) {
   const toggleNode = (nodeId: string, checked: boolean) => {
     const next = new Set(enabledNodes);
     if (checked) next.add(nodeId);
@@ -28,16 +32,28 @@ export function LogsPanel({ enabledNodes, onChange }: LogsPanelProps) {
   };
 
   return (
-    <div className="flex flex-col gap-2">
-      {LOG_NODES.map((node) => (
-        <label key={node.id} className="flex items-center gap-2 text-sm">
-          <Checkbox
-            checked={enabledNodes.has(node.id)}
-            onCheckedChange={(checked) => toggleNode(node.id, checked === true)}
-          />
-          {node.label}
-        </label>
-      ))}
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center justify-end gap-2">
+        <Label htmlFor="logs-visible-switch" className="text-sm text-muted-foreground">
+          Show Log
+        </Label>
+        <Switch
+          id="logs-visible-switch"
+          checked={logsVisible}
+          onCheckedChange={onLogsVisibleChange}
+        />
+      </div>
+      <div className="flex flex-col gap-2">
+        {LOG_NODES.map((node) => (
+          <label key={node.id} className="flex items-center gap-2 text-sm">
+            <Checkbox
+              checked={enabledNodes.has(node.id)}
+              onCheckedChange={(checked) => toggleNode(node.id, checked === true)}
+            />
+            {node.label}
+          </label>
+        ))}
+      </div>
     </div>
   );
 }
