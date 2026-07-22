@@ -2,10 +2,10 @@ import { Line } from "@react-three/drei";
 import * as THREE from "three";
 import type { TrailPoint } from "@/useGripperTrail";
 
-const OLD_COLOR = new THREE.Color("#ff2d2d");
-const RECENT_COLOR = new THREE.Color("#ffffff");
-const CORE_LINEWIDTH = 2;
-const GLOW_LINEWIDTH = 10;
+const OLD_COLOR = new THREE.Color("#ffffff");
+const RECENT_COLOR = new THREE.Color("#ff2d2d");
+const CORE_LINEWIDTH = 1;
+const GLOW_LINEWIDTH = 4;
 const GLOW_OPACITY = 0.3;
 
 interface GripperTrailProps {
@@ -14,8 +14,8 @@ interface GripperTrailProps {
 
 /**
  * Renders the gripper's accumulated position history as a glowing path,
- * faded from red (oldest end) to white (most recent end) — same "light
- * saber" double-line technique as CalibratedFrameAxes (a thin bright core
+ * faded from white (oldest end) to red (most recent/freshest end) — same
+ * "light saber" double-line technique as CalibratedFrameAxes (a thin bright core
  * plus a wider, additively-blended, transparent glow), but with per-vertex
  * color instead of one fixed color, since a trail's whole point is showing
  * recency. Uses drei's Line (Line2/LineMaterial under the hood, supports

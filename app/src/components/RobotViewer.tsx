@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import URDFLoader, { type URDFRobot } from "urdf-loader";
+import * as THREE from "three";
 import * as ROSLIB from "roslib";
 import { FrameAxes } from "@/components/FrameAxes";
 import { CalibratedFrameAxes } from "@/components/CalibratedFrameAxes";
@@ -10,11 +11,14 @@ import { MARKER_FRAMES_BY_ENV, CALIBRATED_FRAME_ID, type RobotEnv } from "@/mark
 import type { MarkerVisibilityState } from "@/components/MarkersPanel";
 import type { TrailPoint } from "@/useGripperTrail";
 
+const ARM_TRANSPARENT_OPACITY = 0.4;
+
 interface RobotViewerProps {
   ros: ROSLIB.Ros | null;
   env: RobotEnv | null;
   markerVisibility: MarkerVisibilityState;
   trailPoints: TrailPoint[];
+  armTransparent: boolean;
 }
 
 interface JointStateMessage {
@@ -53,6 +57,37 @@ function useUrdfRobot(env: RobotEnv | null) {
   return { robot, error };
 }
 
+// Applies/reverts transparency across every mesh material in the loaded
+// URDF — straightforward Three.js material mutation (transparent + opacity),
+// not a shader/postprocessing effect, since urdf-loader's robot is just a
+// normal Object3D tree of meshes. Materials can be shared across multiple
+// meshes (common when several links reuse the same color), so this mutates
+// each unique material instance once via a Set, not once per mesh.
+function useArmTransparency(robot: URDFRobot | null, transparent: boolean) {
+  useEffect(() => {
+    if (!robot) return;
+
+    const materials = new Set<THREE.Material>();
+    robot.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        const material = child.material;
+        if (Array.isArray(material)) {
+          material.forEach((m) => materials.add(m));
+        } else if (material) {
+          materials.add(material);
+        }
+      }
+    });
+
+    materials.forEach((material) => {
+      material.transparent = transparent;
+      material.opacity = transparent ? ARM_TRANSPARENT_OPACITY : 1;
+      material.depthWrite = !transparent;
+      material.needsUpdate = true;
+    });
+  }, [robot, transparent]);
+}
+
 function useJointStates(ros: ROSLIB.Ros | null, robot: URDFRobot | null) {
   useEffect(() => {
     if (!ros || !robot) return;
@@ -77,9 +112,10 @@ function useJointStates(ros: ROSLIB.Ros | null, robot: URDFRobot | null) {
   }, [ros, robot]);
 }
 
-export function RobotViewer({ ros, env, markerVisibility, trailPoints }: RobotViewerProps) {
+export function RobotViewer({ ros, env, markerVisibility, trailPoints, armTransparent }: RobotViewerProps) {
   const { robot, error } = useUrdfRobot(env);
   useJointStates(ros, robot);
+  useArmTransparency(robot, armTransparent);
 
   if (error) {
     return (

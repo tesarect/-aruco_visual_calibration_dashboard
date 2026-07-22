@@ -17,6 +17,8 @@ interface DevSpaceDrawerProps {
   calibration: ReturnType<typeof useCalibrationAction>;
   trailEnabled: boolean;
   onTrailEnabledChange: (enabled: boolean) => void;
+  armTransparent: boolean;
+  onArmTransparentChange: (transparent: boolean) => void;
 }
 
 // A4 (todo.txt): dev space bottom drawer for dev-related observations/logs —
@@ -27,9 +29,16 @@ interface DevSpaceDrawerProps {
 //
 // 3 equal columns, vertical Separators between them (left: calibration
 // spread-result text, moved out of CalibrationPanel per explicit request;
-// center: the gripper-trail toggle; right: reserved for a spread-value graph,
-// deliberately left empty — graph choice explicitly deferred to a follow-up).
-export function DevSpaceDrawer({ calibration, trailEnabled, onTrailEnabledChange }: DevSpaceDrawerProps) {
+// center: arm-transparency + gripper-trail toggles; right: reserved for a
+// spread-value graph, deliberately left empty — graph choice explicitly
+// deferred to a follow-up).
+export function DevSpaceDrawer({
+  calibration,
+  trailEnabled,
+  onTrailEnabledChange,
+  armTransparent,
+  onArmTransparentChange,
+}: DevSpaceDrawerProps) {
   const { status, result } = calibration;
 
   return (
@@ -71,15 +80,27 @@ export function DevSpaceDrawer({ calibration, trailEnabled, onTrailEnabledChange
 
           <Separator orientation="vertical" />
 
-          <div className="flex flex-1 flex-col items-center justify-center gap-2 p-4">
-            <Label htmlFor="gripper-trail-switch" className="text-sm text-muted-foreground">
-              Gripper trail
-            </Label>
-            <Switch
-              id="gripper-trail-switch"
-              checked={trailEnabled}
-              onCheckedChange={onTrailEnabledChange}
-            />
+          <div className="flex flex-1 flex-col items-center justify-center gap-3 p-4">
+            <div className="flex w-full items-center justify-between gap-2">
+              <Label htmlFor="arm-transparency-switch" className="text-sm text-muted-foreground">
+                Arm transparency
+              </Label>
+              <Switch
+                id="arm-transparency-switch"
+                checked={armTransparent}
+                onCheckedChange={onArmTransparentChange}
+              />
+            </div>
+            <div className="flex w-full items-center justify-between gap-2">
+              <Label htmlFor="gripper-trail-switch" className="text-sm text-muted-foreground">
+                Gripper trail
+              </Label>
+              <Switch
+                id="gripper-trail-switch"
+                checked={trailEnabled}
+                onCheckedChange={onTrailEnabledChange}
+              />
+            </div>
           </div>
 
           <Separator orientation="vertical" />

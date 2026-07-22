@@ -159,6 +159,8 @@ function LeftPanel({
   setLogsVisible,
   trailEnabled,
   setTrailEnabled,
+  armTransparent,
+  setArmTransparent,
 }: {
   ros: ReturnType<typeof useRosbridge>["ros"];
   env: RobotEnv | null;
@@ -171,6 +173,8 @@ function LeftPanel({
   setLogsVisible: (visible: boolean) => void;
   trailEnabled: boolean;
   setTrailEnabled: (enabled: boolean) => void;
+  armTransparent: boolean;
+  setArmTransparent: (transparent: boolean) => void;
 }) {
   return (
     <aside className="flex w-96 shrink-0 flex-col gap-6 overflow-y-auto border-r p-6">
@@ -193,6 +197,8 @@ function LeftPanel({
             calibration={calibration}
             trailEnabled={trailEnabled}
             onTrailEnabledChange={setTrailEnabled}
+            armTransparent={armTransparent}
+            onArmTransparentChange={setArmTransparent}
           />
         </div>
       </div>
@@ -226,6 +232,7 @@ export default function App() {
   const nodeHealth = useNodeHealth(ros, env);
   const calibration = useCalibrationAction(ros);
   const [trailEnabled, setTrailEnabled] = useState(false);
+  const [armTransparent, setArmTransparent] = useState(false);
   // Independent of ControlPanel's own useGripperPose call (that one is
   // gated to its Control drawer's open state) — the trail has its own
   // lifecycle, gated to the Dev Space drawer's toggle switch instead, so it
@@ -269,6 +276,8 @@ export default function App() {
           setLogsVisible={setLogsVisible}
           trailEnabled={trailEnabled}
           setTrailEnabled={setTrailEnabled}
+          armTransparent={armTransparent}
+          setArmTransparent={setArmTransparent}
         />
         <div className="relative flex-1 overflow-hidden">
           <main className="absolute inset-0">
@@ -277,6 +286,7 @@ export default function App() {
               env={env}
               markerVisibility={markerVisibility}
               trailPoints={trailPoints}
+              armTransparent={armTransparent}
             />
           </main>
 
