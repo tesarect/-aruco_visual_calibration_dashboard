@@ -9,9 +9,15 @@ import { ControlPanel } from "@/components/ControlPanel";
 import { LogsPanel, LOG_NODES } from "@/components/LogsPanel";
 import { LogsFeed } from "@/components/LogsFeed";
 import { CameraFeed } from "@/components/CameraFeed";
+import { NodeHealthCard } from "@/components/NodeHealthCard";
+import { DevSpaceDrawer } from "@/components/DevSpaceDrawer";
 import { useRosout } from "@/useRosout";
 import { useTrajectoryState } from "@/useTrajectoryState";
 import { useRobotEnv } from "@/useRobotEnv";
+import { useNodeHealth } from "@/useNodeHealth";
+import { useCalibrationAction } from "@/useCalibrationAction";
+import { useGripperPose } from "@/useGripperPose";
+import { useGripperTrail } from "@/useGripperTrail";
 import type { RobotEnv } from "@/markerFrames";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -88,22 +94,13 @@ function LandingPage({
 function DashboardHeader({
   status,
   onDisconnect,
-  currentPoseName,
 }: {
   status: ReturnType<typeof useRosbridge>["status"];
   onDisconnect: () => void;
-  currentPoseName: string | null;
 }) {
   return (
     <header className="flex shrink-0 items-center justify-between border-b px-6 py-3">
-      <div className="flex items-center gap-4">
-        <span className="font-semibold">Visual Calibration Dashboard</span>
-        {currentPoseName && (
-          <span className="rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">
-            Pose: {currentPoseName}
-          </span>
-        )}
-      </div>
+      <span className="font-semibold">Visual Calibration Dashboard</span>
       <div className="flex items-center gap-4">
         <RosbridgeStatusLed status={status} />
         <Button variant="outline" size="sm" onClick={onDisconnect}>
@@ -153,27 +150,33 @@ function SectionLabel({ children }: { children: string }) {
 function LeftPanel({
   ros,
   env,
+  calibration,
   markerVisibility,
   setMarkerVisibility,
   enabledLogNodes,
   setEnabledLogNodes,
   logsVisible,
   setLogsVisible,
+  trailEnabled,
+  setTrailEnabled,
 }: {
   ros: ReturnType<typeof useRosbridge>["ros"];
   env: RobotEnv | null;
+  calibration: ReturnType<typeof useCalibrationAction>;
   markerVisibility: ReturnType<typeof useMarkerVisibility>[0];
   setMarkerVisibility: ReturnType<typeof useMarkerVisibility>[1];
   enabledLogNodes: Set<string>;
   setEnabledLogNodes: (nodes: Set<string>) => void;
   logsVisible: boolean;
   setLogsVisible: (visible: boolean) => void;
+  trailEnabled: boolean;
+  setTrailEnabled: (enabled: boolean) => void;
 }) {
   return (
     <aside className="flex w-96 shrink-0 flex-col gap-6 overflow-y-auto border-r p-6">
       <div className="flex flex-col gap-3">
         <SectionLabel>Calibration</SectionLabel>
-        <CalibrationPanel ros={ros} />
+        <CalibrationPanel ros={ros} calibration={calibration} />
       </div>
 
       <div className="flex flex-col gap-3">
@@ -186,6 +189,11 @@ function LeftPanel({
         <div className="flex flex-col gap-2">
           <ControlPanel ros={ros} env={env} />
           <MarkersPanel env={env} value={markerVisibility} onChange={setMarkerVisibility} />
+          <DevSpaceDrawer
+            calibration={calibration}
+            trailEnabled={trailEnabled}
+            onTrailEnabledChange={setTrailEnabled}
+          />
         </div>
       </div>
 
@@ -213,8 +221,17 @@ export default function App() {
   );
   const [logsVisible, setLogsVisible] = useState(false);
   const logLines = useRosout(ros, enabledLogNodes);
-  const { currentPoseName, latestFailure, dismissFailure } = useTrajectoryState(ros);
+  const { latestFailure, dismissFailure } = useTrajectoryState(ros);
   const env = useRobotEnv(ros);
+  const nodeHealth = useNodeHealth(ros, env);
+  const calibration = useCalibrationAction(ros);
+  const [trailEnabled, setTrailEnabled] = useState(false);
+  // Independent of ControlPanel's own useGripperPose call (that one is
+  // gated to its Control drawer's open state) — the trail has its own
+  // lifecycle, gated to the Dev Space drawer's toggle switch instead, so it
+  // keeps running/growing even while the Control drawer is closed.
+  const trailPose = useGripperPose(ros, env, trailEnabled);
+  const trailPoints = useGripperTrail(trailPose, trailEnabled);
 
   useRosjectRosbridgeAddress(setUrl);
 
@@ -238,25 +255,29 @@ export default function App() {
 
   return (
     <div className="flex h-screen flex-col">
-      <DashboardHeader
-        status={status}
-        onDisconnect={disconnect}
-        currentPoseName={currentPoseName}
-      />
+      <DashboardHeader status={status} onDisconnect={disconnect} />
       <div className="flex flex-1 overflow-hidden">
         <LeftPanel
           ros={ros}
           env={env}
+          calibration={calibration}
           markerVisibility={markerVisibility}
           setMarkerVisibility={setMarkerVisibility}
           enabledLogNodes={enabledLogNodes}
           setEnabledLogNodes={setEnabledLogNodes}
           logsVisible={logsVisible}
           setLogsVisible={setLogsVisible}
+          trailEnabled={trailEnabled}
+          setTrailEnabled={setTrailEnabled}
         />
         <div className="relative flex-1 overflow-hidden">
           <main className="absolute inset-0">
-            <RobotViewer ros={ros} env={env} markerVisibility={markerVisibility} />
+            <RobotViewer
+              ros={ros}
+              env={env}
+              markerVisibility={markerVisibility}
+              trailPoints={trailPoints}
+            />
           </main>
 
           {latestFailure && (
@@ -268,6 +289,17 @@ export default function App() {
           <div className="pointer-events-none absolute right-4 top-4 z-10">
             <div className="pointer-events-auto shadow-xl">
               <CameraFeed ros={ros} env={env} />
+            </div>
+          </div>
+
+          <div className="pointer-events-none absolute bottom-4 left-4 z-10">
+            <div className="pointer-events-auto shadow-xl">
+              <NodeHealthCard
+                robotStatePublisher={nodeHealth.robotStatePublisher}
+                trajectoryController={nodeHealth.trajectoryController}
+                checking={nodeHealth.checking}
+                onRefresh={nodeHealth.refresh}
+              />
             </div>
           </div>
 

@@ -212,27 +212,37 @@ export function CameraFeed({ ros, env }: CameraFeedProps) {
   const dataUrl = isSim && !overlayed ? simDataUrl : rawDataUrl;
 
   return (
-    <Card className="flex h-48 w-64 resize overflow-auto">
-      <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
-        <CardTitle>Camera Feed</CardTitle>
-        <div className="flex items-center gap-2">
-          <Label htmlFor="overlay-switch" className="text-xs text-muted-foreground">
-            Overlayed
-          </Label>
-          <Switch id="overlay-switch" checked={overlayed} onCheckedChange={setOverlayed} />
-        </div>
-      </CardHeader>
-      <CardContent className="flex flex-1 items-center justify-center overflow-hidden p-0">
-        {dataUrl ? (
-          <img
-            src={dataUrl}
-            alt="Wrist camera feed"
-            className="h-full w-full object-contain"
-          />
-        ) : (
-          <p className="text-sm text-muted-foreground">Waiting for image…</p>
-        )}
-      </CardContent>
+    // CSS `resize` always grips the bottom-right corner of the element it's
+    // applied to, non-configurable by spec. This card sits in the screen's
+    // own bottom-right corner (App.tsx), making that grip unreachable.
+    // Standard fix: apply scaleX(-1) directly to the resizable Card itself
+    // (flips the element AND its native resize grip to the bottom-left),
+    // then apply a counter scaleX(-1) to an inner wrapper holding all the
+    // visible content, so the content renders normally while only the grip
+    // stays flipped.
+    <Card className="flex h-48 w-64 resize overflow-auto [transform:scaleX(-1)]">
+      <div className="flex flex-1 flex-col [transform:scaleX(-1)]">
+        <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
+          <CardTitle>Camera Feed</CardTitle>
+          <div className="flex items-center gap-2">
+            <Label htmlFor="overlay-switch" className="text-xs text-muted-foreground">
+              Overlayed
+            </Label>
+            <Switch id="overlay-switch" checked={overlayed} onCheckedChange={setOverlayed} />
+          </div>
+        </CardHeader>
+        <CardContent className="flex flex-1 items-center justify-center overflow-hidden p-0">
+          {dataUrl ? (
+            <img
+              src={dataUrl}
+              alt="Wrist camera feed"
+              className="h-full w-full object-contain"
+            />
+          ) : (
+            <p className="text-sm text-muted-foreground">Waiting for image…</p>
+          )}
+        </CardContent>
+      </div>
     </Card>
   );
 }

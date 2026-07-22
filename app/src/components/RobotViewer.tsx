@@ -5,13 +5,16 @@ import URDFLoader, { type URDFRobot } from "urdf-loader";
 import * as ROSLIB from "roslib";
 import { FrameAxes } from "@/components/FrameAxes";
 import { CalibratedFrameAxes } from "@/components/CalibratedFrameAxes";
+import { GripperTrail } from "@/components/GripperTrail";
 import { MARKER_FRAMES_BY_ENV, CALIBRATED_FRAME_ID, type RobotEnv } from "@/markerFrames";
 import type { MarkerVisibilityState } from "@/components/MarkersPanel";
+import type { TrailPoint } from "@/useGripperTrail";
 
 interface RobotViewerProps {
   ros: ROSLIB.Ros | null;
   env: RobotEnv | null;
   markerVisibility: MarkerVisibilityState;
+  trailPoints: TrailPoint[];
 }
 
 interface JointStateMessage {
@@ -74,7 +77,7 @@ function useJointStates(ros: ROSLIB.Ros | null, robot: URDFRobot | null) {
   }, [ros, robot]);
 }
 
-export function RobotViewer({ ros, env, markerVisibility }: RobotViewerProps) {
+export function RobotViewer({ ros, env, markerVisibility, trailPoints }: RobotViewerProps) {
   const { robot, error } = useUrdfRobot(env);
   useJointStates(ros, robot);
 
@@ -139,6 +142,7 @@ export function RobotViewer({ ros, env, markerVisibility }: RobotViewerProps) {
               env={env}
               visible={markerVisibility[CALIBRATED_FRAME_ID] ?? { x: false, y: false, z: false }}
             />
+            <GripperTrail points={trailPoints} />
           </primitive>
         )}
       </Canvas>

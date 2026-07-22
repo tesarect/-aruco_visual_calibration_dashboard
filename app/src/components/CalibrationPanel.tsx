@@ -2,24 +2,30 @@ import * as ROSLIB from "roslib";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { useCalibrationAction } from "@/useCalibrationAction";
+import type { useCalibrationAction } from "@/useCalibrationAction";
 import { useDetectorMode } from "@/useDetectorMode";
 
 interface CalibrationPanelProps {
   ros: ROSLIB.Ros | null;
+  calibration: ReturnType<typeof useCalibrationAction>;
 }
 
-export function CalibrationPanel({ ros }: CalibrationPanelProps) {
+// Terminal-result display (succeeded/failed/cancelled — the spread-degree
+// details) moved out of this panel into the Dev Space drawer's left column,
+// per explicit request; calibration state itself is now lifted to App and
+// passed down here (and to DevSpaceDrawer) as a prop, rather than each
+// consumer calling useCalibrationAction independently and getting
+// out-of-sync copies of the same run's state.
+export function CalibrationPanel({ ros, calibration }: CalibrationPanelProps) {
   const {
     status,
     feedback,
-    result,
     start,
     stop,
     autoCenterEnabled,
     setAutoCenterEnabled,
     autoCenterError,
-  } = useCalibrationAction(ros);
+  } = calibration;
   const {
     hybridEnabled,
     setHybridEnabled,
@@ -84,23 +90,6 @@ export function CalibrationPanel({ ros }: CalibrationPanelProps) {
           )}
         </div>
       )}
-
-      {status === "succeeded" && result && (
-        <p className="text-sm text-green-600">
-          Done — max spread {result.max_spread_deg.toFixed(1)}°, mean{" "}
-          {result.mean_spread_deg.toFixed(1)}°
-        </p>
-      )}
-
-      {status === "failed" && result && (
-        <p className="text-sm text-destructive">
-          {result.failed_stage
-            ? `Failed at stage: ${result.failed_stage} — ${result.message}`
-            : `Failed: ${result.message}`}
-        </p>
-      )}
-
-      {status === "cancelled" && <p className="text-sm text-muted-foreground">Cancelled.</p>}
     </div>
   );
 }
