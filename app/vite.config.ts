@@ -32,6 +32,15 @@ import tailwindcss from "@tailwindcss/vite";
 // access (e.g. curl localhost:7000), not through the rosject proxy.
 const PORT = Number(process.env.PORT) || 5173;
 
+// `npm run preview` (vite preview) no longer binds the externally-reachable
+// port directly — see scripts/proxy_server.mjs, which now owns port 7000
+// and forwards non-/jenkins traffic here. Vite's own preview default
+// (4173) is used unless VITE_INTERNAL_PORT overrides it, so this stays an
+// internal-only port bound to this same host (127.0.0.1/0.0.0.0 depending
+// on `host: true` below — either way, only reachable from the proxy
+// process running on the same machine, not from outside the rosject).
+const PREVIEW_PORT = Number(process.env.VITE_INTERNAL_PORT) || 4173;
+
 export default defineConfig({
   base: "./",
   plugins: [react(), tailwindcss()],
@@ -55,7 +64,7 @@ export default defineConfig({
   },
   preview: {
     host: true,
-    port: PORT,
+    port: PREVIEW_PORT,
     strictPort: true,
     allowedHosts: true,
   },

@@ -26,9 +26,15 @@ fi
 
 ROSBRIDGE_ADDRESS=""
 WEBPAGE_ADDRESS=""
+JENKINS_ADDRESS=""
 if [ -n "$INSTANCE_ID" ]; then
   ROSBRIDGE_ADDRESS="wss://${INSTANCE_ID}.robotigniteacademy.com/${SLOT_PREFIX_VAL}/rosbridge/"
   WEBPAGE_ADDRESS="https://${INSTANCE_ID}.robotigniteacademy.com/${SLOT_PREFIX_VAL}/webpage/"
+  # Matches install_jenkins.sh's own JENKINS_PREFIX/JENKINS_PUBLIC_URL
+  # resolution exactly (same SLOT_PREFIX + instance-id inputs, same
+  # "/webpage/jenkins" shape) — Jenkins is only reachable at this address
+  # once BOTH it (startjenkins/startall) and this proxy are running.
+  JENKINS_ADDRESS="https://${INSTANCE_ID}.robotigniteacademy.com/${SLOT_PREFIX_VAL}/webpage/jenkins/"
 fi
 
 mkdir -p "$(dirname "$OUT_FILE")"
@@ -37,7 +43,8 @@ cat > "$OUT_FILE" <<EOF
   "slotPrefix": "${SLOT_PREFIX_VAL}",
   "instanceId": "${INSTANCE_ID}",
   "rosbridgeAddress": "${ROSBRIDGE_ADDRESS}",
-  "webpageAddress": "${WEBPAGE_ADDRESS}"
+  "webpageAddress": "${WEBPAGE_ADDRESS}",
+  "jenkinsAddress": "${JENKINS_ADDRESS}"
 }
 EOF
 
@@ -45,6 +52,7 @@ echo "Wrote $OUT_FILE"
 if [ -n "$WEBPAGE_ADDRESS" ]; then
   echo ""
   echo -e "  ${YELLOW}webpage_address: ${WEBPAGE_ADDRESS}${NC}"
+  echo -e "  ${YELLOW}jenkins address: ${JENKINS_ADDRESS}${NC}"
   echo ""
 else
   echo "(empty values — \$SLOT_PREFIX not set or metadata endpoint unreachable; not in a rosject?)" >&2

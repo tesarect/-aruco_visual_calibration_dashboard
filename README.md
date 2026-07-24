@@ -28,38 +28,87 @@ installed and isn't a dev environment.
 
 ```bash
 cd webpage_ws
-./setup_rosject.sh
+./setup_rosject.sh --env sim   # or --env real
 ```
 
-This installs Node 20 (via nvm, alongside the existing system Node), extracts
-the live URDF + meshes from the running simulation (skipped if the sim isn't
-up yet — rerun `npm run extract-urdf` from `app/` later), and `npm install`s
-the app.
+This installs Node 20 (via nvm, alongside the existing system Node) and
+`npm install`s the app.
 
-> [ Important ] For urdf to be generated wither simulation should be up and running or should be connected to Real robot environment. 
+**URDF extraction is now one-time and committed, not re-derived every
+session.** `setup_rosject.sh` only runs `extract_urdf.py` if
+`app/public/robot/<env>/robot.urdf` doesn't exist yet — e.g. right after a
+fresh clone. Once it exists, it's treated as the permanent, git-tracked
+source of truth: no live-robot staleness check, no auto re-extraction, and
+setup succeeds even with no robot connection at all.
 
-> [ Note ] setup_rosject.sh calls it once, only during that setup script, and only if public/robot/robot.urdf doesn't already exist (or pass --force-extract-urdf in as argument).
+> [ Important ] The very first extraction for a given env still needs
+> either the simulation up and running or a connection to the real robot —
+> if neither is available, setup skips extraction with a warning and the
+> dashboard's 3D view stays blank for that env until you extract manually.
+
+> [ Note ] To deliberately refresh an env's committed URDF later (e.g.
+> after a real structural robot_description change), run
+> `npm run extract-urdf:sim` or `:real` from `app/` yourself, confirm the
+> output under `public/robot/<env>/`, then `git add`/`git commit` it —
+> setup_rosject.sh will not overwrite or commit an existing file for you.
 
 ## Viewing through webpage_address (build + preview, not dev)
 
 Every new rosject session loses Node/nvm state (non-persistent disk) — source
-`scripts/session_init.sh` first, every time:
+`scripts/session_init.sh` first, every time (see full command sequence
+below).
+
+Port `7000` is confirmed (by course instructor) as the only port the
+rosject's `webpage_address` nginx proxy forwards to — don't change it
+without re-confirming. **`npm run preview` no longer binds 7000 directly**
+— it now binds Vite's own internal default (4173), and a small reverse
+proxy (`npm run proxy`, see `scripts/proxy_server.mjs`) binds 7000 itself
+and forwards:
+- anything under `/jenkins` → Jenkins (internal port 8080)
+- everything else → the Vite preview server on 4173
+
+Jenkins has its own **independent** lifecycle now — it's not started by
+this app at all, and it doesn't need this app's proxy to run pipelines
+(only to be *viewable in a browser*, since the proxy is what exposes port
+7000). Start it with the `startjenkins` alias
+(`ros2_ws/src/visual_calibration/resources/jenkins/install_jenkins.sh`)
+whenever you want it up — before, after, or without ever starting the web
+app this session.
+
+A fresh-session sequence for the dashboard side is:
 
 ```bash
 source ~/webpage_ws/scripts/session_init.sh
 cd ~/webpage_ws/app
-PORT=7000 npm run build
-PORT=7000 npm run preview
+npm run start        # build, then background preview (4173) + proxy (7000)
 ```
 
-Port `7000` is confirmed (by course instructor) as the port the rosject's
-`webpage_address` nginx proxy forwards to — don't change it without
-re-confirming.
+And, independently, whenever you want Jenkins up:
 
-Open `webpage_address`'s URL in a browser, and enter the rosbridge WebSocket
-URL from `rosbridge_address` on the landing page (rosbridge itself must be
-separately launched — see `sim_tmux_webstack.sh` — it does not start
+```bash
+startjenkins          # binds internal port 8080, detached (survives tmux teardown)
+```
+
+Order between the two doesn't matter functionally. If you start the
+dashboard's proxy before Jenkins, `/jenkins/` briefly 502s until Jenkins
+comes up, then recovers on retry — same the other way around (the
+dashboard just isn't reachable yet if only Jenkins is running).
+
+Open `webpage_address`'s URL in a browser for the dashboard (once
+`npm run start`'s proxy is up), and `webpage_address`'s URL + `/jenkins/`
+for Jenkins (admin/admin — see install_jenkins.sh, once both Jenkins and
+the proxy are up). Enter the rosbridge WebSocket URL from
+`rosbridge_address` on the dashboard's landing page (rosbridge itself must
+be separately launched — see `sim_tmux_webstack.sh` — it does not start
 automatically).
+
+If you need to override the default ports (e.g. to run the proxy locally
+without Jenkins), the proxy script and `vite.config.ts` both honor env
+vars: `PROXY_PORT` (default 7000), `VITE_INTERNAL_PORT` (default 4173,
+read by both `vite.config.ts`'s preview block and the proxy), and
+`JENKINS_INTERNAL_PORT` (default 8080, read by the proxy — set
+`JENKINS_PORT` to the same value when invoking `install_jenkins.sh` if you
+change it, so Jenkins actually binds where the proxy expects it).
 
 **Why build+preview, not `npm run dev`:** `webpage_address`'s public URL has
 a `/<SLOT_PREFIX>/webpage/` path prefix, but nginx strips that prefix before
