@@ -16,6 +16,8 @@ const ARM_TRANSPARENT_OPACITY = 0.4;
 interface RobotViewerProps {
   ros: ROSLIB.Ros | null;
   env: RobotEnv | null;
+  robot: URDFRobot | null;
+  error: string | null;
   markerVisibility: MarkerVisibilityState;
   trailPoints: TrailPoint[];
   armTransparent: boolean;
@@ -38,7 +40,11 @@ function robotUrdfPath(env: RobotEnv) {
   return `./robot/${env}/robot.urdf`;
 }
 
-function useUrdfRobot(env: RobotEnv | null) {
+// Lifted to App.tsx (not called from RobotViewer itself anymore) so
+// useGripperPose can read directly off the same loaded URDFRobot instance
+// instead of maintaining a second copy or depending on TF for fixed joints —
+// see useGripperPose.ts's doc comment for why.
+export function useUrdfRobot(env: RobotEnv | null) {
   const [robot, setRobot] = useState<URDFRobot | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -112,8 +118,15 @@ function useJointStates(ros: ROSLIB.Ros | null, robot: URDFRobot | null) {
   }, [ros, robot]);
 }
 
-export function RobotViewer({ ros, env, markerVisibility, trailPoints, armTransparent }: RobotViewerProps) {
-  const { robot, error } = useUrdfRobot(env);
+export function RobotViewer({
+  ros,
+  env,
+  robot,
+  error,
+  markerVisibility,
+  trailPoints,
+  armTransparent,
+}: RobotViewerProps) {
   useJointStates(ros, robot);
   useArmTransparency(robot, armTransparent);
 

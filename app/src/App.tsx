@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useRosbridge } from "@/useRosbridge";
 import { RosbridgeStatusLed } from "@/components/RosbridgeStatusLed";
-import { RobotViewer } from "@/components/RobotViewer";
+import { RobotViewer, useUrdfRobot } from "@/components/RobotViewer";
 import { MarkersPanel, useMarkerVisibility } from "@/components/MarkersPanel";
 import { CalibrationPanel } from "@/components/CalibrationPanel";
 import { PresetPositionsPanel } from "@/components/PresetPositionsPanel";
@@ -150,6 +150,7 @@ function SectionLabel({ children }: { children: string }) {
 function LeftPanel({
   ros,
   env,
+  robot,
   calibration,
   markerVisibility,
   setMarkerVisibility,
@@ -164,6 +165,7 @@ function LeftPanel({
 }: {
   ros: ReturnType<typeof useRosbridge>["ros"];
   env: RobotEnv | null;
+  robot: ReturnType<typeof useUrdfRobot>["robot"];
   calibration: ReturnType<typeof useCalibrationAction>;
   markerVisibility: ReturnType<typeof useMarkerVisibility>[0];
   setMarkerVisibility: ReturnType<typeof useMarkerVisibility>[1];
@@ -191,7 +193,7 @@ function LeftPanel({
       <div className="flex flex-col gap-3">
         <Separator />
         <div className="flex flex-col gap-2">
-          <ControlPanel ros={ros} env={env} />
+          <ControlPanel ros={ros} env={env} robot={robot} />
           <MarkersPanel env={env} value={markerVisibility} onChange={setMarkerVisibility} />
           <DevSpaceDrawer
             calibration={calibration}
@@ -229,6 +231,7 @@ export default function App() {
   const logLines = useRosout(ros, enabledLogNodes);
   const { latestFailure, dismissFailure } = useTrajectoryState(ros);
   const env = useRobotEnv(ros);
+  const { robot, error: robotError } = useUrdfRobot(env);
   const nodeHealth = useNodeHealth(ros, env);
   const calibration = useCalibrationAction(ros);
   const [trailEnabled, setTrailEnabled] = useState(false);
@@ -237,7 +240,7 @@ export default function App() {
   // gated to its Control drawer's open state) — the trail has its own
   // lifecycle, gated to the Dev Space drawer's toggle switch instead, so it
   // keeps running/growing even while the Control drawer is closed.
-  const trailPose = useGripperPose(ros, env, trailEnabled);
+  const trailPose = useGripperPose(robot, env, trailEnabled);
   const trailPoints = useGripperTrail(trailPose, trailEnabled);
 
   useRosjectRosbridgeAddress(setUrl);
@@ -267,6 +270,7 @@ export default function App() {
         <LeftPanel
           ros={ros}
           env={env}
+          robot={robot}
           calibration={calibration}
           markerVisibility={markerVisibility}
           setMarkerVisibility={setMarkerVisibility}
@@ -284,6 +288,8 @@ export default function App() {
             <RobotViewer
               ros={ros}
               env={env}
+              robot={robot}
+              error={robotError}
               markerVisibility={markerVisibility}
               trailPoints={trailPoints}
               armTransparent={armTransparent}

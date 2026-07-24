@@ -214,7 +214,7 @@ export function useCalibrationAction(ros: ROSLIB.Ros | null) {
     startService.callService(
       {},
       (response: { success: boolean; message: string }) => {
-        console.log("[calibration] start_auto_calibrate response", response);
+        console.log(`[calibration] ${START_SERVICE} response`, response);
         if (!response.success) {
           setStatus("failed");
           statusTopic.unsubscribe();
@@ -224,7 +224,7 @@ export function useCalibrationAction(ros: ROSLIB.Ros | null) {
         // drives all further state transitions from here.
       },
       (error: unknown) => {
-        console.error("[calibration] start_auto_calibrate service call failed", error);
+        console.error(`[calibration] ${START_SERVICE} service call failed`, error);
         setStatus("failed");
         statusTopic.unsubscribe();
         statusTopicRef.current = null;

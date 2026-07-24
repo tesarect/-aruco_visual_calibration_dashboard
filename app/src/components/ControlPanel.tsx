@@ -1,5 +1,6 @@
 import { useState } from "react";
 import * as ROSLIB from "roslib";
+import type { URDFRobot } from "urdf-loader";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
 import {
@@ -18,6 +19,7 @@ import type { RobotEnv } from "@/markerFrames";
 interface ControlPanelProps {
   ros: ROSLIB.Ros | null;
   env: RobotEnv | null;
+  robot: URDFRobot | null;
 }
 
 function AxisButtons({
@@ -62,12 +64,12 @@ function formatNumber(n: number) {
   return n.toFixed(4);
 }
 
-export function ControlPanel({ ros, env }: ControlPanelProps) {
+export function ControlPanel({ ros, env, robot }: ControlPanelProps) {
   const [open, setOpen] = useState(false);
-  // Only subscribes to /tf + /tf_static while the drawer is actually open —
+  // Only reads from the loaded model while the drawer is actually open —
   // recomposes continuously while open (not a one-shot read), so a second
   // nudge always starts from the arm's true post-first-move position.
-  const pose = useGripperPose(ros, env, open);
+  const pose = useGripperPose(robot, env, open);
   const { status, message, nudge } = useNudgeControl(ros);
   const moving = status === "moving";
 
@@ -97,7 +99,7 @@ export function ControlPanel({ ros, env }: ControlPanelProps) {
           )}
           {!pose && (
             <p className="text-xs text-muted-foreground">
-              Waiting for live TF (base_link → gripper)...
+              Waiting for the robot model to load...
             </p>
           )}
           <div className="flex items-start justify-center gap-6">
